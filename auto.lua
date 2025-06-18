@@ -31,7 +31,8 @@ task.spawn(function()
 
 			print("🚀 Trying to join:", jobId)
 			task.wait(1.5)
-			TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
+			TeleportService:TeleportToPlaceInstance(123456789, "abc-def-ghi")
+
 		end)
 
 		if not success then
