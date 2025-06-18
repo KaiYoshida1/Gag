@@ -1,57 +1,49 @@
--- auto.lua
--- Auto-joiner with cache-busting and no stale data via jsDelivr
+-- auto.lua with deep debug and forced refresh
 
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
--- ✅ Uses jsDelivr CDN to bypass raw.githubusercontent cache
+-- ✅ Use jsDelivr + timestamp to prevent caching
 local dataURL = "https://cdn.jsdelivr.net/gh/KaiYoshida1/Gag@main/latestserver.lua"
-local lastJobId = nil
 
 task.spawn(function()
-	while true do
-		local success, err = pcall(function()
-			local url = dataURL .. "?t=" .. tick() -- extra no-cache tag
-			local code = game:HttpGet(url)
+    while true do
+        local ok, err = pcall(function()
+            local url = dataURL .. "?t=" .. tostring(tick())
+            print("🔄 Fetching:", url)
+            local code = game:HttpGet(url)
+            print("📄 Fetched content at", os.date(), ":\n", code)
 
-			local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
-			if not placeId or not jobId then
-				warn("⚠️ Could not parse teleport info.")
-				return
-			end
+            local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
+            if not placeId or not jobId then
+                warn("⚠️ Could not parse teleport info.")
+                return
+            end
 
-			jobId = string.gsub(jobId, "%s+", "")
-			local currentJob = string.gsub(game.JobId, "%s+", "")
+            jobId = jobId:gsub("%s+", "")
+            local currentJob = game.JobId and game.JobId:gsub("%s+", "") or "nil"
+            print("🧠 Current Job:", currentJob)
+            print("📦 Target Job from GitHub:", jobId)
 
-			print("🧠 Current Job:", currentJob)
-			print("📦 Target Job:", jobId)
+            if currentJob == jobId then
+                print("✅ Already in correct server.")
+                return
+            end
 
-			if currentJob == jobId then
-				print("✅ Already in correct server.")
-				return
-			end
+            print("🚀 Attempting to teleport to", jobId)
+            local tpOk, tpErr = pcall(function()
+                TeleportService:TeleportToPlaceInstance(tonumber(placeId), jobId, Players.LocalPlayer)
+            end)
+            if not tpOk then
+                warn("❌ Teleport error:", tpErr)
+            end
+        end)
 
-			if lastJobId ~= jobId then
-				print("🚀 New job detected:", jobId)
-				lastJobId = jobId
-			else
-				print("🔁 Retrying join:", jobId)
-			end
+        if not ok then
+            warn("🚨 Loop error:", err)
+        end
 
-			local ok, tpErr = pcall(function()
-				TeleportService:TeleportToPlaceInstance(tonumber(placeId), jobId, Players.LocalPlayer)
-			end)
-
-			if not ok then
-				warn("❌ Teleport failed (engine):", tpErr)
-			end
-		end)
-
-		if not success then
-			warn("❌ Error in loop:", err)
-		end
-
-		task.wait(5)
-	end
+        task.wait(5)
+    end
 end)
