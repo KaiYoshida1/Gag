@@ -1,12 +1,18 @@
+-- auto.lua
+-- Auto-joiner with cache-busting GitHub request
+
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
-local dataURL = "https://raw.githubusercontent.com/KaiYoshida1/Gag/main/latestserver.lua"
+local baseURL = "https://raw.githubusercontent.com/KaiYoshida1/Gag/main/latestserver.lua"
+local lastJobId = nil
 
 task.spawn(function()
 	while true do
 		local success, result = pcall(function()
-			local code = game:HttpGet(dataURL)
+			local url = baseURL .. "?v=" .. HttpService:GenerateGUID(false)
+			local code = game:HttpGet(url)
 
 			local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
 			if not placeId or not jobId then
@@ -17,12 +23,20 @@ task.spawn(function()
 			jobId = string.gsub(jobId, "%s+", "")
 			local currentJob = string.gsub(game.JobId, "%s+", "")
 
+			print("🧠 Current Job:", currentJob)
+			print("📦 GitHub Job:", jobId)
+
 			if currentJob == jobId then
 				print("✅ Already in correct server.")
 				return
 			end
 
-			print("🚀 Trying to join job:", jobId)
+			if lastJobId ~= jobId then
+				print("🚀 New job detected:", jobId)
+				lastJobId = jobId
+			else
+				print("🔁 Retrying join:", jobId)
+			end
 
 			local tpSuccess, tpErr = pcall(function()
 				TeleportService:TeleportToPlaceInstance(tonumber(placeId), jobId, Players.LocalPlayer)
