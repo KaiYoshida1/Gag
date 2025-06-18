@@ -1,49 +1,56 @@
--- auto.lua with deep debug and forced refresh
-
+-- auto.lua (robust + real-time GitHub fetch)
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
--- ✅ Use jsDelivr + timestamp to prevent caching
-local dataURL = "https://cdn.jsdelivr.net/gh/KaiYoshida1/Gag@main/latestserver.lua"
+local baseURL = "https://raw.githubusercontent.com/KaiYoshida1/Gag/main/latestserver.lua"
+local lastJobId = nil
 
 task.spawn(function()
-    while true do
-        local ok, err = pcall(function()
-            local url = dataURL .. "?t=" .. tostring(tick())
-            print("🔄 Fetching:", url)
-            local code = game:HttpGet(url)
-            print("📄 Fetched content at", os.date(), ":\n", code)
+	while true do
+		local success, err = pcall(function()
+			local url = baseURL .. "?nocache=" .. tick()
+			local code = game:HttpGet(url)
 
-            local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
-            if not placeId or not jobId then
-                warn("⚠️ Could not parse teleport info.")
-                return
-            end
+			print("📄 GitHub Content:\n", code)
 
-            jobId = jobId:gsub("%s+", "")
-            local currentJob = game.JobId and game.JobId:gsub("%s+", "") or "nil"
-            print("🧠 Current Job:", currentJob)
-            print("📦 Target Job from GitHub:", jobId)
+			local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
+			if not placeId or not jobId then
+				warn("⚠️ Could not parse teleport info.")
+				return
+			end
 
-            if currentJob == jobId then
-                print("✅ Already in correct server.")
-                return
-            end
+			jobId = jobId:gsub("%s+", "")
+			local currentJob = game.JobId:gsub("%s+", "")
 
-            print("🚀 Attempting to teleport to", jobId)
-            local tpOk, tpErr = pcall(function()
-                TeleportService:TeleportToPlaceInstance(tonumber(placeId), jobId, Players.LocalPlayer)
-            end)
-            if not tpOk then
-                warn("❌ Teleport error:", tpErr)
-            end
-        end)
+			print("🧠 Current Job:", currentJob)
+			print("📦 Target Job from GitHub:", jobId)
 
-        if not ok then
-            warn("🚨 Loop error:", err)
-        end
+			if currentJob == jobId then
+				print("✅ Already in correct server.")
+				return
+			end
 
-        task.wait(5)
-    end
+			if lastJobId ~= jobId then
+				print("🚀 New job detected:", jobId)
+				lastJobId = jobId
+			else
+				print("🔁 Retrying join:", jobId)
+			end
+
+			local tpOK, tpErr = pcall(function()
+				TeleportService:TeleportToPlaceInstance(tonumber(placeId), jobId, Players.LocalPlayer)
+			end)
+
+			if not tpOK then
+				warn("❌ Teleport error:", tpErr)
+			end
+		end)
+
+		if not success then
+			warn("❌ Error in loop:", err)
+		end
+
+		task.wait(5)
+	end
 end)
