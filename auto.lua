@@ -1,7 +1,6 @@
 -- auto.lua
--- Loads teleport info from latestserver.lua
+-- Auto-joiner that fetches latest job from GitHub every second
 
-local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
@@ -24,13 +23,19 @@ task.spawn(function()
 				return
 			end
 
+			-- Clean jobId of hidden whitespace just in case
+			jobId = string.gsub(jobId, "%s+", "")
+
+			-- Debug comparison
+			print("🧠 Current Job:", game.JobId)
+			print("📦 GitHub Job:", jobId)
+
 			if game.JobId == jobId then
 				print("✅ Already in correct server.")
 				return
 			end
 
-			print("🚀 Trying to join:", jobId)
-			task.wait(1.5)
+			print("🚀 Joining new job:", jobId)
 			TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
 		end)
 
@@ -38,6 +43,7 @@ task.spawn(function()
 			warn("❌ Error during loop:", result)
 		end
 
+		-- Check every second
 		task.wait(1)
 	end
 end)
