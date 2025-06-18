@@ -38,6 +38,6 @@ task.spawn(function()
 			warn("❌ Error during loop:", result)
 		end
 
-		task.wait(20)
+		task.wait(1)
 	end
 end)
