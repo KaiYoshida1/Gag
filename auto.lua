@@ -1,5 +1,5 @@
 -- auto.lua
--- Smart looping joiner with full-server check
+-- Looping auto-joiner (does NOT skip full servers)
 
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
@@ -26,36 +26,17 @@ task.spawn(function()
 			end
 
 			if game.JobId == jobId then
-				print("⏳ Already in target server.")
+				print("✅ Already in correct server.")
 				return
 			end
 
-			if jobId == lastJobId then
-				print("⏳ No new job ID.")
-				return
-			end
-
-			lastJobId = jobId
-			print("🚀 New server found:", jobId)
-
-			local check = pcall(function()
-				local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100", placeId)
-				local response = HttpService:JSONDecode(game:HttpGet(url))
-				for _, server in ipairs(response.data) do
-					if server.id == jobId then
-						if server.playing >= server.maxPlayers then
-							warn("🟥 Target server is full.")
-							return
-						end
-					end
-				end
-			end)
-
+			print("🚀 Attempting to join:", jobId)
+			task.wait(1.5)
 			TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
 		end)
 
 		if not success then
-			warn("❌ Error during loop:", result)
+			warn("❌ Error in loop:", result)
 		end
 
 		task.wait(20)
