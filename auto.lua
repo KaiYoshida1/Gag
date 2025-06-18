@@ -50,7 +50,7 @@ task.spawn(function()
         end)
 
         if not success then
-            warn("🔴 Error checking job:", result)
+            warn("Error checking job:", result)
         end
 
         wait(20)
