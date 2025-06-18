@@ -1,17 +1,18 @@
 -- auto.lua
--- Robust auto-joiner that retries even on full/closed servers
+-- Auto-joiner with cache-busting and no stale data via jsDelivr
 
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
-local dataURL = "https://raw.githubusercontent.com/KaiYoshida1/Gag/main/latestserver.lua"
+-- ✅ Uses jsDelivr CDN to bypass raw.githubusercontent cache
+local dataURL = "https://cdn.jsdelivr.net/gh/KaiYoshida1/Gag@main/latestserver.lua"
 local lastJobId = nil
 
 task.spawn(function()
 	while true do
 		local success, err = pcall(function()
-			local url = dataURL .. "?v=" .. HttpService:GenerateGUID(false)
+			local url = dataURL .. "?t=" .. tick() -- extra no-cache tag
 			local code = game:HttpGet(url)
 
 			local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
@@ -51,6 +52,6 @@ task.spawn(function()
 			warn("❌ Error in loop:", err)
 		end
 
-		task.wait(5) -- try again after 5 seconds
+		task.wait(5)
 	end
 end)
