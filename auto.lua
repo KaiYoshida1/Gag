@@ -1,5 +1,5 @@
 -- auto.lua
--- Smart auto-joiner with full-server detection
+-- Looping auto-joiner (does NOT skip full servers)
 
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
@@ -8,7 +8,6 @@ local Players = game:GetService("Players")
 local scriptURL = "https://raw.githubusercontent.com/KaiYoshida1/Gag/main/auto.lua"
 
 local lastJobId = nil
-local skippedFullJobs = {}
 
 local function extractTeleportData(code)
 	local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"%)")
@@ -31,42 +30,13 @@ task.spawn(function()
 				return
 			end
 
-			if jobId == lastJobId or skippedFullJobs[jobId] then
-				print("⏳ No new join target.")
-				return
-			end
-
-			print("🚀 New server found:", jobId)
-			lastJobId = jobId
-
-			local isFull = false
-
-			local check = pcall(function()
-				local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100", placeId)
-				local response = HttpService:JSONDecode(game:HttpGet(url))
-				for _, server in ipairs(response.data) do
-					if server.id == jobId then
-						if server.playing >= server.maxPlayers then
-							isFull = true
-							skippedFullJobs[jobId] = true
-							warn("🟥 Server full. Skipping this jobId.")
-							break
-						end
-					end
-				end
-			end)
-
-			if isFull then
-				print("🛑 Skipping full server.")
-				return
-			end
-
+			print("🚀 Attempting to join:", jobId)
 			task.wait(1.5)
 			TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
 		end)
 
 		if not success then
-			warn("❌ Error in auto-join loop:", result)
+			warn("❌ Error in loop:", result)
 		end
 
 		task.wait(20)
