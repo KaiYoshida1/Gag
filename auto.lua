@@ -1,36 +1,63 @@
 -- auto.lua
--- Auto teleport to server + say hi once
+-- Smart looping joiner with full-server check
 
+local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
-local placeId = 126884695634066
-local jobId = "62fb10de-c646-4dd4-bbbd-6e20e685df4c"
+local scriptURL = "https://raw.githubusercontent.com/KaiYoshida1/Gag/main/auto.lua"
 
--- Prevent rejoining same server
-if game.JobId == jobId then
-    print("✅ Already in correct server.")
-    return
+local lastJobId = nil
+
+local function extractTeleportData(code)
+	local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"%)")
+	return tonumber(placeId), jobId
 end
 
-TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
+task.spawn(function()
+	while true do
+		local success, result = pcall(function()
+			local latestCode = game:HttpGet(scriptURL)
+			local placeId, jobId = extractTeleportData(latestCode)
 
-Players.LocalPlayer.OnTeleport:Connect(function(state)
-    if state == Enum.TeleportState.InProgress then
-        game.Loaded:Wait()
-        task.wait(4)
+			if not placeId or not jobId then
+				warn("⚠️ Could not parse teleport info")
+				return
+			end
 
-        local chatService = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-        if chatService then
-            local say = chatService:FindFirstChild("SayMessageRequest")
-            if say then
-                say:FireServer("hi", "All")
-                print("💬 Sent chat message: hi")
-            else
-                warn("⚠️ SayMessageRequest not found.")
-            end
-        else
-            warn("⚠️ DefaultChatSystemChatEvents not found.")
-        end
-    end
+			if game.JobId == jobId then
+				print("⏳ Already in target server.")
+				return
+			end
+
+			if jobId == lastJobId then
+				print("⏳ No new job ID.")
+				return
+			end
+
+			lastJobId = jobId
+			print("🚀 New server found:", jobId)
+
+			local check = pcall(function()
+				local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100", placeId)
+				local response = HttpService:JSONDecode(game:HttpGet(url))
+				for _, server in ipairs(response.data) do
+					if server.id == jobId then
+						if server.playing >= server.maxPlayers then
+							warn("🟥 Target server is full.")
+							return
+						end
+					end
+				end
+			end)
+
+			TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
+		end)
+
+		if not success then
+			warn("❌ Error during loop:", result)
+		end
+
+		task.wait(20)
+	end
 end)
