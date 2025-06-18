@@ -1,4 +1,4 @@
 -- latestserver.lua
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-TeleportService:TeleportToPlaceInstance(126884695634066, "62fb10de-c646-4dd4-bbbd-6e20e685df4c", Players.LocalPlayer)
+TeleportService:TeleportToPlaceInstance(126884695634066, "2d052548-833c-4748-9ba6-3e6176f8f95f", Players.LocalPlayer)
