@@ -1,4 +1,5 @@
--- auto.lua (robust + real-time GitHub fetch)
+-- auto.lua (final version: robust + real-time GitHub sync)
+
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -8,49 +9,51 @@ local lastJobId = nil
 
 task.spawn(function()
 	while true do
-		local success, err = pcall(function()
-			local url = baseURL .. "?nocache=" .. tick()
-			local code = game:HttpGet(url)
+		local ok, err = pcall(function()
+			local fullURL = baseURL .. "?nocache=" .. tick()
+			local code = game:HttpGet(fullURL)
 
-			print("📄 GitHub Content:\n", code)
+			print("🌐 Fetched latestserver.lua at " .. os.date())
+			print("📄 Raw code:\n" .. code)
 
 			local placeId, jobId = string.match(code, "TeleportToPlaceInstance%((%d+),%s*\"([^\"]+)\"")
 			if not placeId or not jobId then
-				warn("⚠️ Could not parse teleport info.")
+				warn("⚠️ Failed to parse job info.")
 				return
 			end
 
+			placeId = tonumber(placeId)
 			jobId = jobId:gsub("%s+", "")
 			local currentJob = game.JobId:gsub("%s+", "")
 
-			print("🧠 Current Job:", currentJob)
-			print("📦 Target Job from GitHub:", jobId)
+			print("🧠 You are in:", currentJob)
+			print("📦 GitHub job:", jobId)
 
 			if currentJob == jobId then
-				print("✅ Already in correct server.")
+				print("✅ Already in the correct server.")
 				return
 			end
 
 			if lastJobId ~= jobId then
-				print("🚀 New job detected:", jobId)
+				print("🚀 New job detected! Attempting teleport...")
 				lastJobId = jobId
 			else
-				print("🔁 Retrying join:", jobId)
+				print("🔁 Retrying teleport to same job...")
 			end
 
-			local tpOK, tpErr = pcall(function()
-				TeleportService:TeleportToPlaceInstance(tonumber(placeId), jobId, Players.LocalPlayer)
+			local success, tpError = pcall(function()
+				TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
 			end)
 
-			if not tpOK then
-				warn("❌ Teleport error:", tpErr)
+			if not success then
+				warn("❌ Teleport failed:", tpError)
 			end
 		end)
 
-		if not success then
-			warn("❌ Error in loop:", err)
+		if not ok then
+			warn("❌ Loop error:", err)
 		end
 
-		task.wait(5)
+		task.wait(1)
 	end
 end)
